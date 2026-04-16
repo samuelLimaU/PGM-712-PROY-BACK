@@ -33,7 +33,7 @@ public class ProductoController {
         this.fileStorageService = fileStorageService;
     }
 
-    // POST /productos
+    // POST agregado /productos
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProductoResponseDTO> crear(
             @RequestParam("nombre") String nombre,
@@ -57,7 +57,7 @@ public class ProductoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // PUT /productos/{id}
+    // PUT aun no testeado /productos/{id}
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProductoResponseDTO> actualizar(
             @PathVariable Long id,
@@ -82,28 +82,26 @@ public class ProductoController {
         return ResponseEntity.ok(response);
     }
 
-    // GET /productos
+    // GET funcional de momento /productos
     @GetMapping
     public ResponseEntity<List<ProductoResponseDTO>> listar() {
         return ResponseEntity.ok(productoService.listar());
     }
 
-    // GET /productos/{id}
+    // GET funcional de momento /productos/{id}
     @GetMapping("/{id}")
     public ResponseEntity<ProductoResponseDTO> buscarPorId(@PathVariable Long id) {
         return ResponseEntity.ok(productoService.buscarPorId(id));
     }
 
-    // DELETE /productos/{id}
+    // DELETE aun no testeado /productos/{id}
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         productoService.eliminar(id);
         return ResponseEntity.noContent().build();
     }
 
-    // ──────────────────────────────────────────────
     // Manejo de excepciones
-    // ──────────────────────────────────────────────
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleValidacion(IllegalArgumentException ex) {
         return ResponseEntity

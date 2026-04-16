@@ -21,6 +21,7 @@ public class CatalogoController {
         this.productoService = productoService;
     }
 
+    //cambiada la forma en la que se llama a los productos activos ahora ya no deberia mostrar productos inactivos 
     @GetMapping
     public ResponseEntity<List<ProductoResponseDTO>> listar() {
         List<ProductoResponseDTO> activos = productoService.listar()
