@@ -38,16 +38,6 @@ public class EntityPromocion {
     @Column(name = "activo")
     private Boolean activo;
 
-    // Relación con la tabla intermedia promocion_productos
-    // Guardamos solo los IDs de productos (sin JOIN completo a la entidad Producto)
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(
-            name = "promocion_productos",
-            joinColumns = @JoinColumn(name = "promocion_id")
-    )
-    @Column(name = "producto_id")
-    private List<Long> productoIds = new ArrayList<>();
-
     // ── Constructores ─────────────────────────────────────────────────
     public EntityPromocion() {}
 
@@ -78,7 +68,4 @@ public class EntityPromocion {
 
     public Boolean getActivo() { return activo; }
     public void setActivo(Boolean activo) { this.activo = activo; }
-
-    public List<Long> getProductoIds() { return productoIds; }
-    public void setProductoIds(List<Long> productoIds) { this.productoIds = productoIds; }
 }

@@ -2,6 +2,7 @@ package com.multimedia.spring.multimed.aplicacion.service;
 
 import com.multimedia.spring.multimed.aplicacion.dto.PromocionRequestDTO;
 import com.multimedia.spring.multimed.aplicacion.dto.PromocionResponseDTO;
+import com.multimedia.spring.multimed.aplicacion.dto.ProductoResponseDTO;
 import com.multimedia.spring.multimed.dominio.models.Promocion;
 import com.multimedia.spring.multimed.dominio.repository.PromocionRepository;
 import org.springframework.stereotype.Service;
@@ -98,6 +99,53 @@ public class PromocionService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Promoción no encontrada con id: " + id));
         promocionRepository.eliminar(id);
+    }
+
+    // ──────────────────────────────────────────────
+    //  Lógica de Aplicación al Catálogo
+    // ──────────────────────────────────────────────
+    public List<ProductoResponseDTO> aplicarPromociones(List<ProductoResponseDTO> productos) {
+        // 1. Obtener promociones activas y vigentes hoy
+        java.time.LocalDate hoy = java.time.LocalDate.now();
+        List<PromocionResponseDTO> promocionesVigentes = listarActivas().stream()
+                .filter(p -> (p.fechaInicio == null || !p.fechaInicio.isAfter(hoy)) &&
+                             (p.fechaFin == null || !p.fechaFin.isBefore(hoy)))
+                .collect(Collectors.toList());
+
+        if (promocionesVigentes.isEmpty()) return productos;
+
+        // 2. Para cada producto, buscar si tiene una promoción aplicada
+        for (ProductoResponseDTO producto : productos) {
+            // Buscamos la primera promoción que contenga este producto
+            // (Podrías priorizar la de mayor descuento si hubiera varias, pero de momento tomamos la primera)
+            promocionesVigentes.stream()
+                .filter(promo -> promo.productoIds != null && promo.productoIds.contains(producto.id))
+                .findFirst()
+                .ifPresent(promo -> {
+                    producto.promocionActiva = true;
+                    producto.tipoPromocion = promo.tipo;
+                    producto.tituloPromocion = promo.titulo;
+
+                    if ("DESCUENTO_PORCENTAJE".equals(promo.tipo) && promo.valor != null) {
+                        // precio - (precio * (valor/100))
+                        java.math.BigDecimal descuento = producto.precio
+                            .multiply(promo.valor)
+                            .divide(new java.math.BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+                        producto.precioOferta = producto.precio.subtract(descuento);
+                    } 
+                    else if ("DESCUENTO_FIJO".equals(promo.tipo) && promo.valor != null) {
+                        // precio - valor
+                        producto.precioOferta = producto.precio.subtract(promo.valor);
+                    }
+                    
+                    // Asegurarse de que el precio de oferta no sea negativo
+                    if (producto.precioOferta != null && producto.precioOferta.compareTo(java.math.BigDecimal.ZERO) < 0) {
+                        producto.precioOferta = java.math.BigDecimal.ZERO;
+                    }
+                });
+        }
+
+        return productos;
     }
 
     // ──────────────────────────────────────────────

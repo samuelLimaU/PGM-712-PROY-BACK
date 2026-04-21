@@ -25,11 +25,11 @@ public class UsuarioRolService {
             throw new IllegalArgumentException("usuarioId y rolId son obligatorios");
         }
 
-        // evitar duplicado
-        repository.buscarPorUsuarioIdYRolId(dto.usuarioId, dto.rolId)
-                .ifPresent(e -> {
-                    throw new IllegalArgumentException("El usuario ya tiene ese rol");
-                });
+        // evitar duplicado: si ya existe, lo devolvemos en lugar de fallar
+        var existente = repository.buscarPorUsuarioIdYRolId(dto.usuarioId, dto.rolId);
+        if (existente.isPresent()) {
+            return toResponse(existente.get());
+        }
 
         UsuarioRol entity = new UsuarioRol();
         entity.setUsuarioId(dto.usuarioId);

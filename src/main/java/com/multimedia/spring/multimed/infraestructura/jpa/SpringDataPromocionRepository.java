@@ -17,6 +17,7 @@ public interface SpringDataPromocionRepository extends JpaRepository<EntityPromo
     List<EntityPromocion> findByActivoTrueAndTipo(String tipo);
 
     // Promociones que contienen un producto específico
-    @Query("SELECT p FROM EntityPromocion p JOIN p.productoIds pid WHERE pid = :productoId")
+    @Query("SELECT p FROM EntityPromocion p WHERE p.id IN " +
+           "(SELECT ep.promocionId FROM EntityPromocionProducto ep WHERE ep.productoId = :productoId)")
     List<EntityPromocion> findByProductoId(Long productoId);
 }

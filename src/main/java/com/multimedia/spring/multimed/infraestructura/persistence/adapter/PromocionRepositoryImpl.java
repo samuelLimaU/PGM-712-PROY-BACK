@@ -3,10 +3,12 @@ package com.multimedia.spring.multimed.infraestructura.persistence.adapter;
 import com.multimedia.spring.multimed.dominio.models.Promocion;
 import com.multimedia.spring.multimed.dominio.repository.PromocionRepository;
 import com.multimedia.spring.multimed.infraestructura.jpa.EntityPromocion;
+import com.multimedia.spring.multimed.infraestructura.jpa.EntityPromocionProducto;
+import com.multimedia.spring.multimed.infraestructura.jpa.SpringDataPromocionProductoRepository;
 import com.multimedia.spring.multimed.infraestructura.jpa.SpringDataPromocionRepository;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -15,18 +17,34 @@ import java.util.stream.Collectors;
 public class PromocionRepositoryImpl implements PromocionRepository {
 
     private final SpringDataPromocionRepository springRepo;
+    private final SpringDataPromocionProductoRepository relacionRepo;
 
-    public PromocionRepositoryImpl(SpringDataPromocionRepository springRepo) {
+    public PromocionRepositoryImpl(SpringDataPromocionRepository springRepo, 
+                                 SpringDataPromocionProductoRepository relacionRepo) {
         this.springRepo = springRepo;
+        this.relacionRepo = relacionRepo;
     }
 
     // ──────────────────────────────────────────────
     //  CRUD base
     // ──────────────────────────────────────────────
     @Override
+    @Transactional
     public Promocion guardar(Promocion promocion) {
         EntityPromocion entity = mapearDominioAEntity(promocion);
         EntityPromocion guardada = springRepo.save(entity);
+        
+        // Actualizar relaciones de productos
+        relacionRepo.deleteByPromocionId(guardada.getId());
+        relacionRepo.flush(); // Forzar borrado inmediato
+
+        if (promocion.getProductoIds() != null) {
+            List<EntityPromocionProducto> relaciones = promocion.getProductoIds().stream()
+                .map(productoId -> new EntityPromocionProducto(guardada.getId(), productoId))
+                .collect(Collectors.toList());
+            relacionRepo.saveAll(relaciones);
+        }
+        
         return mapearEntityADominio(guardada);
     }
 
@@ -53,7 +71,9 @@ public class PromocionRepositoryImpl implements PromocionRepository {
     }
 
     @Override
+    @Transactional
     public void eliminar(Long id) {
+        relacionRepo.deleteByPromocionId(id);
         springRepo.deleteById(id);
     }
 
@@ -61,28 +81,28 @@ public class PromocionRepositoryImpl implements PromocionRepository {
     //  Gestión de productos asociados
     // ──────────────────────────────────────────────
     @Override
+    @Transactional
     public void agregarProducto(Long promocionId, Long productoId) {
-        springRepo.findById(promocionId).ifPresent(entity -> {
-            if (!entity.getProductoIds().contains(productoId)) {
-                entity.getProductoIds().add(productoId);
-                springRepo.save(entity);
-            }
-        });
+        if (relacionRepo.findByPromocionId(promocionId).stream()
+                .noneMatch(r -> r.getProductoId().equals(productoId))) {
+            relacionRepo.save(new EntityPromocionProducto(promocionId, productoId));
+        }
     }
 
     @Override
+    @Transactional
     public void removerProducto(Long promocionId, Long productoId) {
-        springRepo.findById(promocionId).ifPresent(entity -> {
-            entity.getProductoIds().remove(productoId);
-            springRepo.save(entity);
-        });
+        relacionRepo.findByPromocionId(promocionId).stream()
+                .filter(r -> r.getProductoId().equals(productoId))
+                .forEach(relacionRepo::delete);
     }
 
     @Override
     public List<Long> listarProductoIds(Long promocionId) {
-        return springRepo.findById(promocionId)
-                .map(EntityPromocion::getProductoIds)
-                .orElse(new ArrayList<>());
+        return relacionRepo.findByPromocionId(promocionId)
+                .stream()
+                .map(EntityPromocionProducto::getProductoId)
+                .collect(Collectors.toList());
     }
 
     // ──────────────────────────────────────────────
@@ -99,9 +119,6 @@ public class PromocionRepositoryImpl implements PromocionRepository {
         e.setFechaInicio(p.getFechaInicio());
         e.setFechaFin(p.getFechaFin());
         e.setActivo(p.getActivo());
-        e.setProductoIds(p.getProductoIds() != null
-                ? new ArrayList<>(p.getProductoIds())
-                : new ArrayList<>());
         return e;
     }
 
@@ -116,9 +133,14 @@ public class PromocionRepositoryImpl implements PromocionRepository {
         p.setFechaInicio(e.getFechaInicio());
         p.setFechaFin(e.getFechaFin());
         p.setActivo(e.getActivo());
-        p.setProductoIds(e.getProductoIds() != null
-                ? new ArrayList<>(e.getProductoIds())
-                : new ArrayList<>());
+        
+        // Cargar los IDs de productos asociados desde la tabla intermedia
+        List<Long> productoIds = relacionRepo.findByPromocionId(e.getId())
+                .stream()
+                .map(EntityPromocionProducto::getProductoId)
+                .collect(Collectors.toList());
+        p.setProductoIds(productoIds);
+        
         return p;
     }
 }

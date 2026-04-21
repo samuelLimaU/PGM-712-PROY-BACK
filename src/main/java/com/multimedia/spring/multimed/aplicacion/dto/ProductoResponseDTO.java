@@ -13,4 +13,10 @@ public class ProductoResponseDTO {
     public String imagenUrl;
     public Boolean activo;
     public LocalDateTime createdAt;
+
+    // Campos de Promoción 
+    public Boolean promocionActiva = false;
+    public BigDecimal precioOferta;
+    public String tipoPromocion; // BANNER, DESCUENTO_PORCENTAJE, DESCUENTO_FIJO
+    public String tituloPromocion;
 }

@@ -25,7 +25,7 @@ public class PromocionController {
     }
 
     // ── POST /api/promociones (solo ADMIN) ──────────────────────────
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PostMapping
     public ResponseEntity<PromocionResponseDTO> crear(@RequestBody PromocionRequestDTO dto) {
         PromocionResponseDTO response = promocionService.crear(dto);
@@ -51,7 +51,7 @@ public class PromocionController {
     }
 
     // ── PUT /api/promociones/{id} (solo ADMIN) ───────────────────────
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PutMapping("/{id}")
     public ResponseEntity<PromocionResponseDTO> actualizar(
             @PathVariable Long id,
@@ -60,7 +60,7 @@ public class PromocionController {
     }
 
     // ── DELETE /api/promociones/{id} (solo ADMIN) ───────────────────
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         promocionService.eliminar(id);

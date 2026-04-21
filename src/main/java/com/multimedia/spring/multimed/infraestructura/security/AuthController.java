@@ -3,6 +3,8 @@ package com.multimedia.spring.multimed.infraestructura.security;
 import com.multimedia.spring.multimed.aplicacion.dto.LoginRequestDTO;
 import com.multimedia.spring.multimed.aplicacion.dto.LoginResponseDTO;
 
+import com.multimedia.spring.multimed.dominio.models.Usuario;
+import com.multimedia.spring.multimed.dominio.repository.UsuarioRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -19,10 +21,12 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
+    private final UsuarioRepository usuarioRepository;
 
-    public AuthController(AuthenticationManager authenticationManager, JwtUtil jwtUtil) {
+    public AuthController(AuthenticationManager authenticationManager, JwtUtil jwtUtil, UsuarioRepository usuarioRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @PostMapping("/login")
@@ -33,6 +37,8 @@ public class AuthController {
         );
 
         UserDetails userDetails = (UserDetails) auth.getPrincipal();
+        Usuario usuario = usuarioRepository.buscarPorEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
         List<String> roles = userDetails.getAuthorities()
                 .stream()
@@ -42,10 +48,12 @@ public class AuthController {
         String token = jwtUtil.generarToken(userDetails.getUsername(), roles);
 
         return ResponseEntity.ok(new LoginResponseDTO(
+                usuario.getId(),
                 token,
-                userDetails.getUsername(),
-                // El nombre lo sacamos del email por ahora; podés enriquecerlo después
-                userDetails.getUsername(),
+                usuario.getEmail(),
+                usuario.getNombre(),
+                usuario.getApellido(),
+                usuario.getTelefono(),
                 roles
         ));
     }
