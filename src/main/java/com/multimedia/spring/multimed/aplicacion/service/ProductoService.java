@@ -4,6 +4,7 @@ import com.multimedia.spring.multimed.aplicacion.dto.ProductoRequestDTO;
 import com.multimedia.spring.multimed.aplicacion.dto.ProductoResponseDTO;
 import com.multimedia.spring.multimed.dominio.models.Producto;
 import com.multimedia.spring.multimed.dominio.repository.ProductoRepository;
+import com.multimedia.spring.multimed.infraestructura.jpa.SpringDataPedidoDetalleRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -15,9 +16,11 @@ import java.util.stream.Collectors;
 public class ProductoService {
 
     private final ProductoRepository productoRepository;
+    private final SpringDataPedidoDetalleRepository pedidoDetalleRepository;
 
-    public ProductoService(ProductoRepository productoRepository) {
+    public ProductoService(ProductoRepository productoRepository, SpringDataPedidoDetalleRepository pedidoDetalleRepository) {
         this.productoRepository = productoRepository;
+        this.pedidoDetalleRepository = pedidoDetalleRepository;
     }
 
     // Crear
@@ -52,6 +55,10 @@ public class ProductoService {
 
     // Eliminar
     public void eliminar(Long id) {
+        if (pedidoDetalleRepository.existsByProductoId(id)) {
+            throw new IllegalArgumentException("No se puede eliminar: El producto ya está registrado en uno o más pedidos.");
+        }
+
         productoRepository.buscarPorId(id)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Producto no encontrado con id: " + id));
@@ -63,6 +70,13 @@ public class ProductoService {
         Producto producto = productoRepository.buscarPorId(id)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Producto no encontrado con id: " + id));
+
+        // Si el producto está en un pedido, restringimos solo el precio
+        if (pedidoDetalleRepository.existsByProductoId(id)) {
+            if (producto.getPrecio().compareTo(dto.precio) != 0) {
+                throw new IllegalArgumentException("No se puede cambiar el precio: El producto ya tiene pedidos asociados.");
+            }
+        }
 
         producto.setNombre(dto.nombre);
         producto.setDescripcion(dto.descripcion);

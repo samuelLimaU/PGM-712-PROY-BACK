@@ -46,9 +46,20 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/actuator/**", "/uploads/**", "/test-imagen", "/catalogo/**").permitAll()
+                        // 1. Preflight (CORS) siempre permitido
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                        // 2. Rutas de Auth y Archivos
+                        .requestMatchers("/auth/**", "/uploads/**", "/test-imagen").permitAll()
+                        // 3. Catálogo y consultas públicas
+                        .requestMatchers("/catalogo/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/productos/**", "/promociones/**").permitAll()
+                        // 4. Acciones sensibles (Pedidos y Usuarios Públicos)
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/usuarios", "/api/pedidos").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/promociones/**").permitAll()
+                        // 5. Análisis y Estimación
+                        .requestMatchers("/api/analisis/**").authenticated()
+                        // 6. Resto de productos y promociones (DELETE, PUT, POST) -> Requieren ADMIN
+                        .requestMatchers("/productos/**", "/promociones/**").hasAuthority("ROLE_ADMINISTRADOR")
+                        // 6. Cualquier otra cosa autenticada
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

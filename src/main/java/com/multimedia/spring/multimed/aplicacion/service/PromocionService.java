@@ -116,10 +116,9 @@ public class PromocionService {
 
         // 2. Para cada producto, buscar si tiene una promoción aplicada
         for (ProductoResponseDTO producto : productos) {
-            // Buscamos la primera promoción que contenga este producto
-            // (Podrías priorizar la de mayor descuento si hubiera varias, pero de momento tomamos la primera)
+            // Buscamos la primera promoción que contenga este producto o sea global (sin IDs específicos)
             promocionesVigentes.stream()
-                .filter(promo -> promo.productoIds != null && promo.productoIds.contains(producto.id))
+                .filter(promo -> (promo.productoIds == null || promo.productoIds.isEmpty()) || promo.productoIds.contains(producto.id))
                 .findFirst()
                 .ifPresent(promo -> {
                     producto.promocionActiva = true;
@@ -146,6 +145,35 @@ public class PromocionService {
         }
 
         return productos;
+    }
+
+    public java.math.BigDecimal calcularPrecioVenta(com.multimedia.spring.multimed.dominio.models.Producto producto) {
+        java.time.LocalDate hoy = java.time.LocalDate.now();
+        List<Promocion> promocionesVigentes = promocionRepository.listarActivas().stream()
+                .filter(p -> (p.getFechaInicio() == null || !p.getFechaInicio().isAfter(hoy)) &&
+                             (p.getFechaFin() == null || !p.getFechaFin().isBefore(hoy)))
+                .collect(Collectors.toList());
+
+        if (promocionesVigentes.isEmpty()) return producto.getPrecio();
+
+        for (Promocion promo : promocionesVigentes) {
+            // Aplicar si es global (sin IDs) o si contiene el ID del producto
+            if ((promo.getProductoIds() == null || promo.getProductoIds().isEmpty()) || promo.getProductoIds().contains(producto.getId())) {
+                if ("DESCUENTO_PORCENTAJE".equals(promo.getTipo()) && promo.getValor() != null) {
+                    java.math.BigDecimal descuento = producto.getPrecio()
+                        .multiply(promo.getValor())
+                        .divide(new java.math.BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+                    java.math.BigDecimal precioOferta = producto.getPrecio().subtract(descuento);
+                    return precioOferta.compareTo(java.math.BigDecimal.ZERO) < 0 ? java.math.BigDecimal.ZERO : precioOferta;
+                } 
+                else if ("DESCUENTO_FIJO".equals(promo.getTipo()) && promo.getValor() != null) {
+                    java.math.BigDecimal precioOferta = producto.getPrecio().subtract(promo.getValor());
+                    return precioOferta.compareTo(java.math.BigDecimal.ZERO) < 0 ? java.math.BigDecimal.ZERO : precioOferta;
+                }
+            }
+        }
+
+        return producto.getPrecio();
     }
 
     // ──────────────────────────────────────────────

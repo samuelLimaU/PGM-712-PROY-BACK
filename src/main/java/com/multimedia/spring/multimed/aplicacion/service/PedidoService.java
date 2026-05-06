@@ -25,19 +25,22 @@ public class PedidoService {
     private final SpringDataPagoRepository pagoRepository;
     private final ProductoRepository productoRepository;
     private final SpringDataUsuarioRepository usuarioRepository;
+    private final PromocionService promocionService;
 
     public PedidoService(SpringDataClienteInfoRepository clienteInfoRepository,
                          SpringDataPedidoRepository pedidoRepository,
                          SpringDataPedidoDetalleRepository pedidoDetalleRepository,
                          SpringDataPagoRepository pagoRepository,
                          ProductoRepository productoRepository,
-                         SpringDataUsuarioRepository usuarioRepository) {
+                         SpringDataUsuarioRepository usuarioRepository,
+                         PromocionService promocionService) {
         this.clienteInfoRepository = clienteInfoRepository;
         this.pedidoRepository = pedidoRepository;
         this.pedidoDetalleRepository = pedidoDetalleRepository;
         this.pagoRepository = pagoRepository;
         this.productoRepository = productoRepository;
         this.usuarioRepository = usuarioRepository;
+        this.promocionService = promocionService;
     }
 
     @Transactional
@@ -70,8 +73,9 @@ public class PedidoService {
             prodDom.setStock(prodDom.getStock() - item.getCantidad());
             productoRepository.guardar(prodDom);
 
-            // Calcular subtotal
-            BigDecimal subtotal = prodDom.getPrecio().multiply(new BigDecimal(item.getCantidad()));
+            // Calcular precio con descuento
+            BigDecimal precioFinal = promocionService.calcularPrecioVenta(prodDom);
+            BigDecimal subtotal = precioFinal.multiply(new BigDecimal(item.getCantidad()));
             total = total.add(subtotal);
 
             // Preparar detalle
@@ -82,7 +86,7 @@ public class PedidoService {
             
             detalle.setProducto(entityProd);
             detalle.setCantidad(item.getCantidad());
-            detalle.setPrecioUnitario(prodDom.getPrecio());
+            detalle.setPrecioUnitario(precioFinal);
             detalles.add(detalle);
         }
 
@@ -128,6 +132,33 @@ public class PedidoService {
     public void actualizarEstado(Long id, EstadoPedido nuevoEstado) {
         EntityPedido pedido = pedidoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+        
+        EstadoPedido estadoAnterior = pedido.getEstado();
+        
+        // Si el pedido se cancela, devolvemos el stock
+        if (nuevoEstado == EstadoPedido.CANCELADO && estadoAnterior != EstadoPedido.CANCELADO) {
+            for (EntityPedidoDetalle detalle : pedido.getDetalles()) {
+                Producto prodDom = productoRepository.buscarPorId(detalle.getProducto().getId())
+                        .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+                prodDom.setStock(prodDom.getStock() + detalle.getCantidad());
+                productoRepository.guardar(prodDom);
+            }
+        }
+        // Si el pedido estaba cancelado y vuelve a estar activo (ej. PENDIENTE), descontamos stock de nuevo
+        else if (estadoAnterior == EstadoPedido.CANCELADO && nuevoEstado != EstadoPedido.CANCELADO) {
+            for (EntityPedidoDetalle detalle : pedido.getDetalles()) {
+                Producto prodDom = productoRepository.buscarPorId(detalle.getProducto().getId())
+                        .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+                
+                if (prodDom.getStock() < detalle.getCantidad()) {
+                    throw new RuntimeException("Stock insuficiente para restaurar pedido: " + prodDom.getNombre());
+                }
+                
+                prodDom.setStock(prodDom.getStock() - detalle.getCantidad());
+                productoRepository.guardar(prodDom);
+            }
+        }
+
         pedido.setEstado(nuevoEstado);
         pedidoRepository.save(pedido);
     }
@@ -144,6 +175,11 @@ public class PedidoService {
         pago.setFechaPago(LocalDateTime.now());
         pago.setNotas(notas);
         pagoRepository.save(pago);
+
+        // Actualizar el estado del pedido a PAGADO automáticamente
+        EntityPedido pedido = pago.getPedido();
+        pedido.setEstado(EstadoPedido.PAGADO);
+        pedidoRepository.save(pedido);
     }
 
     private PedidoResponseDTO mapToResponseDTO(EntityPedido pedido) {

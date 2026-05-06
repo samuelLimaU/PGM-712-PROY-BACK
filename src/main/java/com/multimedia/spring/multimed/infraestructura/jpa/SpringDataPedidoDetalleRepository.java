@@ -5,4 +5,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface SpringDataPedidoDetalleRepository extends JpaRepository<EntityPedidoDetalle, Long> {
+    boolean existsByProductoId(Long productoId);
 }
