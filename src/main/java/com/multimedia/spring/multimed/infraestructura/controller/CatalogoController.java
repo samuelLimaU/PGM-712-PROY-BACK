@@ -1,5 +1,6 @@
 package com.multimedia.spring.multimed.infraestructura.controller;
 
+import com.multimedia.spring.multimed.aplicacion.dto.PageResponse;
 import com.multimedia.spring.multimed.aplicacion.dto.ProductoResponseDTO;
 import com.multimedia.spring.multimed.aplicacion.service.ProductoService;
 import com.multimedia.spring.multimed.aplicacion.service.PromocionService;
@@ -24,16 +25,24 @@ public class CatalogoController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ProductoResponseDTO>> listar() {
-        // 1. Obtener todos los productos y filtrar los activos
+    public ResponseEntity<?> listar(
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size) {
+        
+        if (page != null && size != null) {
+            PageResponse<ProductoResponseDTO> pagedResponse = productoService.listarActivosPaginados(page, size);
+            List<ProductoResponseDTO> conPromociones = promocionService.aplicarPromociones(pagedResponse.getContent());
+            pagedResponse.setContent(conPromociones);
+            return ResponseEntity.ok(pagedResponse);
+        }
+
+        // Fallback: listar todos los activos
         List<ProductoResponseDTO> activos = productoService.listar()
                 .stream()
                 .filter(p -> Boolean.TRUE.equals(p.activo))
                 .collect(Collectors.toList());
         
-        // 2. Aplicar lógica de promociones si existen
         List<ProductoResponseDTO> conPromociones = promocionService.aplicarPromociones(activos);
-        
         return ResponseEntity.ok(conPromociones);
     }
 }

@@ -11,11 +11,19 @@ public interface ProductoRepository {
 
     List<Producto> listar();
 
+    List<Producto> listarPaginado(int page, int size);
+
     Optional<Producto> buscarPorId(Long id);
 
     void eliminar(Long id);
 
     List<Producto> listarActivos();
+
+    List<Producto> listarActivosPaginados(int page, int size);
+
+    long contarTotal();
+
+    long contarActivos();
 
     boolean existePorNombre(String nombre);
 }

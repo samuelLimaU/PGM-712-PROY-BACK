@@ -49,17 +49,21 @@ public class SecurityConfig {
                         // 1. Preflight (CORS) siempre permitido
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         // 2. Rutas de Auth y Archivos
-                        .requestMatchers("/auth/**", "/uploads/**", "/test-imagen").permitAll()
+                        .requestMatchers("/auth/**", "/uploads/**", "/test-imagen", "/error").permitAll()
                         // 3. Catálogo y consultas públicas
                         .requestMatchers("/catalogo/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/productos/**", "/promociones/**").permitAll()
-                        // 4. Acciones sensibles (Pedidos y Usuarios Públicos)
-                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/usuarios", "/api/pedidos").permitAll()
-                        // 5. Análisis y Estimación
+                        // 4. Pedidos: Creación pública, Gestión restringida
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/pedidos").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/pedidos/*/estado").hasAnyAuthority("ROLE_ADMINISTRADOR", "ROLE_BOT", "ROLE_CAJERO")
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/pedidos/**").hasAnyAuthority("ROLE_ADMINISTRADOR", "ROLE_BOT", "ROLE_CAJERO")
+                        // 5. Usuarios Públicos
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/usuarios").permitAll()
+                        // 6. Análisis y Estimación
                         .requestMatchers("/api/analisis/**").authenticated()
-                        // 6. Resto de productos y promociones (DELETE, PUT, POST) -> Requieren ADMIN
+                        // 7. Resto de productos y promociones (DELETE, PUT, POST) -> Requieren ADMIN
                         .requestMatchers("/productos/**", "/promociones/**").hasAuthority("ROLE_ADMINISTRADOR")
-                        // 6. Cualquier otra cosa autenticada
+                        // 8. Cualquier otra cosa autenticada
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -91,7 +95,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        // Permitir cualquier origen para compatibilidad con Docker Desktop y Túneles (Serveo)
+        config.setAllowedOriginPatterns(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

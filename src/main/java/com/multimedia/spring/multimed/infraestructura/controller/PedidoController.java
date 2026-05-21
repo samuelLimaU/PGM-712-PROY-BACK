@@ -1,9 +1,6 @@
 package com.multimedia.spring.multimed.infraestructura.controller;
 
-import com.multimedia.spring.multimed.aplicacion.dto.EstadoPedidoRequestDTO;
-import com.multimedia.spring.multimed.aplicacion.dto.PagoRequestDTO;
-import com.multimedia.spring.multimed.aplicacion.dto.PedidoRequestDTO;
-import com.multimedia.spring.multimed.aplicacion.dto.PedidoResponseDTO;
+import com.multimedia.spring.multimed.aplicacion.dto.*;
 import com.multimedia.spring.multimed.aplicacion.service.PedidoService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,7 +23,13 @@ public class PedidoController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PedidoResponseDTO>> listar() {
+    public ResponseEntity<?> listar(
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size) {
+        
+        if (page != null && size != null) {
+            return ResponseEntity.ok(pedidoService.listarPedidosPaginados(page, size));
+        }
         return ResponseEntity.ok(pedidoService.listarPedidos());
     }
 

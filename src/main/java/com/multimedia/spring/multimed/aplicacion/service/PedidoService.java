@@ -1,12 +1,13 @@
 package com.multimedia.spring.multimed.aplicacion.service;
 
-import com.multimedia.spring.multimed.aplicacion.dto.DetallePedidoResponseDTO;
-import com.multimedia.spring.multimed.aplicacion.dto.ItemPedidoDTO;
-import com.multimedia.spring.multimed.aplicacion.dto.PedidoRequestDTO;
-import com.multimedia.spring.multimed.aplicacion.dto.PedidoResponseDTO;
+import com.multimedia.spring.multimed.aplicacion.dto.*;
 import com.multimedia.spring.multimed.dominio.models.*;
 import com.multimedia.spring.multimed.dominio.repository.*;
 import com.multimedia.spring.multimed.infraestructura.jpa.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -117,9 +118,27 @@ public class PedidoService {
     }
 
     public List<PedidoResponseDTO> listarPedidos() {
-        return pedidoRepository.findAll().stream()
+        return pedidoRepository.findAll(Sort.by(Sort.Direction.DESC, "id")).stream()
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
+    }
+
+    public PageResponse<PedidoResponseDTO> listarPedidosPaginados(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+        Page<EntityPedido> pedidosPage = pedidoRepository.findAll(pageable);
+        
+        List<PedidoResponseDTO> content = pedidosPage.getContent().stream()
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+        
+        return new PageResponse<>(
+                content,
+                pedidosPage.getNumber(),
+                pedidosPage.getSize(),
+                pedidosPage.getTotalElements(),
+                pedidosPage.getTotalPages(),
+                pedidosPage.isLast()
+        );
     }
 
     public PedidoResponseDTO obtenerPedido(Long id) {

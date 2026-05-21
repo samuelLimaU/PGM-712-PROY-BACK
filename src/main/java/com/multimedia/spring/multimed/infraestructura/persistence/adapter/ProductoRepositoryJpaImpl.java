@@ -4,6 +4,8 @@ import com.multimedia.spring.multimed.dominio.models.Producto;
 import com.multimedia.spring.multimed.dominio.repository.ProductoRepository;
 import com.multimedia.spring.multimed.infraestructura.jpa.EntityProducto;
 import com.multimedia.spring.multimed.infraestructura.jpa.SpringDataProductoRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -28,10 +30,24 @@ public class ProductoRepositoryJpaImpl implements ProductoRepository {
 
     @Override
     public List<Producto> listar() {
-        return springDataRepo.findAll()
+        return springDataRepo.findAll(Sort.by(Sort.Direction.DESC, "id"))
                 .stream()
                 .map(this::mapearEntityADominio)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Producto> listarPaginado(int page, int size) {
+        return springDataRepo.findAll(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id")))
+                .getContent()
+                .stream()
+                .map(this::mapearEntityADominio)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public long contarTotal() {
+        return springDataRepo.count();
     }
 
     @Override
@@ -47,10 +63,24 @@ public class ProductoRepositoryJpaImpl implements ProductoRepository {
 
     @Override
     public List<Producto> listarActivos() {
-        return springDataRepo.findByActivoTrue()
+        return springDataRepo.findByActivoTrue(Sort.by(Sort.Direction.DESC, "id"))
                 .stream()
                 .map(this::mapearEntityADominio)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Producto> listarActivosPaginados(int page, int size) {
+        return springDataRepo.findByActivoTrue(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id")))
+                .getContent()
+                .stream()
+                .map(this::mapearEntityADominio)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public long contarActivos() {
+        return springDataRepo.countByActivoTrue();
     }
 
     @Override

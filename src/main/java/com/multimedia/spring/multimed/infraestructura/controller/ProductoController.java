@@ -88,7 +88,13 @@ public class ProductoController {
 
     // GET funcional de momento /productos
     @GetMapping
-    public ResponseEntity<List<ProductoResponseDTO>> listar() {
+    public ResponseEntity<?> listar(
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size) {
+        
+        if (page != null && size != null) {
+            return ResponseEntity.ok(productoService.listarPaginado(page, size));
+        }
         return ResponseEntity.ok(productoService.listar());
     }
 

@@ -1,5 +1,6 @@
 package com.multimedia.spring.multimed.aplicacion.service;
 
+import com.multimedia.spring.multimed.aplicacion.dto.PageResponse;
 import com.multimedia.spring.multimed.aplicacion.dto.ProductoRequestDTO;
 import com.multimedia.spring.multimed.aplicacion.dto.ProductoResponseDTO;
 import com.multimedia.spring.multimed.dominio.models.Producto;
@@ -43,6 +44,46 @@ public class ProductoService {
                 .stream()
                 .map(this::mapearDominioADto)
                 .collect(Collectors.toList());
+    }
+
+    public PageResponse<ProductoResponseDTO> listarPaginado(int page, int size) {
+        List<ProductoResponseDTO> content = productoRepository.listarPaginado(page, size)
+                .stream()
+                .map(this::mapearDominioADto)
+                .collect(Collectors.toList());
+        
+        long totalElements = productoRepository.contarTotal();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        boolean last = (page + 1) >= totalPages;
+
+        return new PageResponse<>(
+                content,
+                page,
+                size,
+                totalElements,
+                totalPages,
+                last
+        );
+    }
+
+    public PageResponse<ProductoResponseDTO> listarActivosPaginados(int page, int size) {
+        List<ProductoResponseDTO> content = productoRepository.listarActivosPaginados(page, size)
+                .stream()
+                .map(this::mapearDominioADto)
+                .collect(Collectors.toList());
+        
+        long totalElements = productoRepository.contarActivos();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        boolean last = (page + 1) >= totalPages;
+
+        return new PageResponse<>(
+                content,
+                page,
+                size,
+                totalElements,
+                totalPages,
+                last
+        );
     }
 
     // Buscar por id
